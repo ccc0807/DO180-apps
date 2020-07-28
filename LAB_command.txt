@@ -1,0 +1,392 @@
+DO180 for OCP 4.x LAB «ü¥O¶°
+
+Chap 1 ###################################
+
+https://api.ocp-ap3.prod.nextcle.com:6443
+
+ed1e5e34-e692-4809-a5d0-8f172fdbf51c
+
+ccw0729
+
+8bd5e1dacc1241f9b089
+
+cat /usr/local/etc/ocp4.config
+
+Chap 2 Ex1 ###################################
+
+lab container-create start
+
+sudo podman run --name mysql-basic \
+-e MYSQL_USER=user1 -e MYSQL_PASSWORD=mypa55 \
+-e MYSQL_DATABASE=items -e MYSQL_ROOT_PASSWORD=r00tpa55 \
+-d rhscl/mysql-57-rhel7:5.7-3.14
+
+sudo podman ps --format "{{.ID}} {{.Image}} {{.Names}}"
+
+sudo podman exec -it mysql-basic /bin/bash
+
+mysql -uroot
+
+show databases;
+
+use items;
+
+CREATE TABLE Projects (id int(11) NOT NULL,
+name varchar(255) DEFAULT NULL,
+code varchar(255) DEFAULT NULL,
+PRIMARY KEY (id));
+
+show tables;
+
+insert into Projects (id, name, code) values (1,'DevOps','DO180');
+
+select * from Projects;
+
+exit
+
+exit
+
+lab container-create finish
+
+Chap 2 Lab ###################################
+
+lab container-review start
+
+sudo podman run -d -p 8080:80 \
+--name httpd-basic redhattraining/httpd-parent:2.4
+
+curl http://localhost:8080
+
+sudo podman exec -it httpd-basic /bin/bash
+
+ls -la /var/www/html
+
+echo "Hello World" > /var/www/html/index.html
+
+exit
+
+curl http://localhost:8080
+
+lab container-review grade
+
+lab container-review finish
+
+Chap 3 Ex1 ###################################
+
+lab manage-lifecycle start
+
+sudo podman run --name mysql-db rhscl/mysql-57-rhel7
+
+sudo podman logs mysql-db
+
+sudo podman run --name mysql \
+-d -e MYSQL_USER=user1 -e MYSQL_PASSWORD=mypa55 \
+-e MYSQL_DATABASE=items -e MYSQL_ROOT_PASSWORD=r00tpa55 \
+rhscl/mysql-57-rhel7
+
+sudo podman ps
+
+sudo podman inspect \
+-f '{{ .NetworkSettings.IPAddress }}' mysql
+
+mysql -uuser1 -h 10.88.0.5 -p items
+mypa55
+
+CREATE TABLE Projects (id int(11) NOT NULL, \
+name varchar(255) DEFAULT NULL, code varchar(255) DEFAULT NULL, \
+PRIMARY KEY (id));
+
+insert into Projects (id, name, code) values (1,'DevOps','DO180');
+
+exit
+
+mysql -uuser1 -h 10.88.0.5 \
+-pmypa55 items < DO180/labs/manage-lifecycle/db.sql
+
+sudo podman run --name mysql-2 \
+-it rhscl/mysql-57-rhel7 /bin/bash
+
+mysql -uroot
+
+exit
+
+sudo podman ps -a \
+--format="table {{.ID}} {{.Names}} {{.Status}}"
+
+sudo podman exec mysql /bin/bash \
+-c 'mysql -uuser1 -p -e "select * from items.Projects;"'
+
+mypa55
+
+lab manage-lifecycle finish
+
+
+Chap 3 Ex2 ###################################
+
+lab manage-storage start
+
+sudo mkdir -pv /var/local/mysql
+
+sudo semanage fcontext -a \
+-t container_file_t '/var/local/mysql(/.*)?'
+
+sudo restorecon -R /var/local/mysql
+
+ls -dZ /var/local/mysql
+
+sudo chown -Rv 27:27 /var/local/mysql
+
+sudo podman pull rhscl/mysql-57-rhel7
+
+sudo podman run --name persist-db \
+-d -v /var/local/mysql:/var/lib/mysql/data \
+-e MYSQL_USER=user1 -e MYSQL_PASSWORD=mypa55 \
+-e MYSQL_DATABASE=items -e MYSQL_ROOT_PASSWORD=r00tpa55 \
+rhscl/mysql-57-rhel7
+
+sudo podman ps \
+--format="table {{.ID}} {{.Names}} {{.Status}}"
+
+ls -l /var/local/mysql
+
+lab manage-storage finish
+
+
+
+Chap 3 Ex3 ###################################
+
+lab manage-networking start
+
+sudo podman run --name mysqldb-port \
+-d -v /var/local/mysql:/var/lib/mysql/data -p 13306:3306 \
+-e MYSQL_USER=user1 -e MYSQL_PASSWORD=mypa55 \
+-e MYSQL_DATABASE=items -e MYSQL_ROOT_PASSWORD=r00tpa55 \
+rhscl/mysql-57-rhel7
+
+sudo podman ps
+
+mysql -uuser1 -h 127.0.0.1 -pmypa55 \
+-P13306 items < /home/student/DO180/labs/manage-networking/db.sql
+
+mysql -uuser1 -h 127.0.0.1 -pmypa55 \
+-P13306 items -e "SELECT * FROM Item"
+
+sudo podman exec -it mysqldb-port /bin/bash
+
+which mysql
+
+mysql -uroot items -e "SELECT * FROM Item"
+
+exit
+
+sudo podman exec -it mysqldb-port \
+/opt/rh/rh-mysql57/root/usr/bin/mysql -uroot items -e "SELECT * FROM Item"
+
+lab manage-networking finish
+
+
+
+Chap 3 Lab ###################################
+
+lab manage-review start
+
+sudo mkdir -pv /var/local/mysql
+
+sudo semanage fcontext -a \
+-t container_file_t '/var/local/mysql(/.*)?'
+
+sudo restorecon -R /var/local/mysql
+
+sudo chown -Rv 27:27 /var/local/mysql
+
+sudo podman run --name mysql-1 \
+-d -v /var/local/mysql:/var/lib/mysql/data \
+-e MYSQL_USER=user1 -e MYSQL_PASSWORD=mypa55 \
+-e MYSQL_DATABASE=items -e MYSQL_ROOT_PASSWORD=r00tpa55 \
+rhscl/mysql-57-rhel7
+
+sudo podman ps
+
+sudo podman inspect \
+-f '{{ .NetworkSettings.IPAddress }}' mysql-1
+
+mysql -uuser1 -h 10.88.0.9 \
+-pmypa55 items < /home/student/DO180/labs/manage-review/db.sql
+
+mysql -uuser1 -h 10.88.0.9 -pmypa55 items \
+-e "SELECT * FROM Item"
+
+sudo podman stop mysql-1
+
+sudo podman run --name mysql-2 \
+-d -v /var/local/mysql:/var/lib/mysql/data \
+-p 13306:3306 \
+-e MYSQL_USER=user1 -e MYSQL_PASSWORD=mypa55 \
+-e MYSQL_DATABASE=items -e MYSQL_ROOT_PASSWORD=r00tpa55 \
+rhscl/mysql-57-rhel7
+
+sudo podman ps
+
+sudo podman ps -a > /tmp/my-containers
+
+sudo podman exec -it mysql-2 /bin/bash
+
+mysql -uroot
+
+show databases;
+
+use items;
+
+show tables;
+
+SELECT * FROM Item;
+
+exit
+
+exit
+
+mysql -uuser1 -h workstation.lab.example.com \
+-pmypa55 -P13306 items
+
+insert into Item (description, done) values ('Finished lab', 1);
+
+exit
+
+sudo podman rm mysql-1
+
+lab manage-review grade
+
+lab manage-review finish
+
+
+
+Chap 4 Ex1 ###################################
+
+lab image-operations start
+
+sudo podman login quay.io
+ccw0729
+YourPasswordHere
+
+sudo podman run -d --name official-httpd \
+-p 8180:80 redhattraining/httpd-parent
+
+sudo podman exec -it official-httpd /bin/bash
+
+echo "DO180 Page" > /var/www/html/do180.html
+
+exit
+
+curl 127.0.0.1:8180/do180.html
+
+sudo podman inspect -f \
+"{{range .Mounts}}{{println .Destination}}{{end}}" official-httpd
+
+sudo podman diff official-httpd
+
+sudo podman stop official-httpd
+
+sudo podman commit \
+-a 'AndersonWang' official-httpd do180-custom-httpd
+
+sudo podman images
+
+source /usr/local/etc/ocp4.config
+
+sudo podman tag do180-custom-httpd \
+quay.io/${RHT_OCP4_QUAY_USER}/do180-custom-httpd:v1.0
+
+sudo podman images
+
+sudo podman push \
+quay.io/${RHT_OCP4_QUAY_USER}/do180-custom-httpd:v1.0
+
+sudo podman pull \
+-q quay.io/${RHT_OCP4_QUAY_USER}/do180-custom-httpd:v1.0
+
+sudo podman run -d --name test-httpd -p 8280:80 \
+${RHT_OCP4_QUAY_USER}/do180-custom-httpd:v1.0
+
+curl http://localhost:8280/do180.html
+
+lab image-operations finish
+
+
+
+Chap 4 Lab ###################################
+
+lab image-review start
+
+sudo podman search docker.io/nginx
+
+sudo podman search docker.io/nginx \
+-f is-official=true
+
+sudo podman pull docker.io/nginx:1.17
+
+sudo podman images
+
+sudo podman run --name official-nginx \
+-d -p 8080:80 docker.io/nginx:1.17
+
+sudo podman exec -it official-nginx /bin/bash
+
+echo 'DO180' > /usr/share/nginx/html/index.html
+
+exit
+
+curl 127.0.0.1:8080
+
+sudo podman stop official-nginx
+
+sudo podman commit -a 'AndersonWang' \
+official-nginx do180/mynginx:v1.0-SNAPSHOT
+
+sudo podman images
+
+sudo podman run --name official-nginx-dev \
+-d -p 8080:80 do180/mynginx:v1.0-SNAPSHOT
+
+sudo podman exec -it official-nginx-dev /bin/bash
+
+echo 'DO180 Page' > /usr/share/nginx/html/index.html
+
+exit
+
+curl 127.0.0.1:8080
+
+sudo podman stop official-nginx-dev
+
+sudo podman commit -a 'AndersonWang' \
+official-nginx-dev do180/mynginx:v1.0
+
+sudo podman images
+
+sudo podman ps -a \
+--format="{{.ID}} {{.Names}} {{.Status}}"
+
+sudo podman rm official-nginx-dev
+
+sudo podman ps -a \
+--format="{{.ID}} {{.Names}} {{.Status}}"
+
+sudo podman rmi do180/mynginx:v1.0-SNAPSHOT
+
+sudo podman images
+
+sudo podman run -d --name my-nginx \
+-p 8280:80 do180/mynginx:v1.0
+
+
+curl 127.0.0.1:8280
+
+lab image-review grade
+
+lab image-review finish
+
+
+Chap 5 Ex1 ###################################
+
+
+
+Chap 5 Lab ###################################
